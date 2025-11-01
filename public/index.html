@@ -18,11 +18,6 @@
       <label for="number">Phone number (with country code, no +)</label>
       <input id="number" name="number" placeholder="94771234567" required />
 
-      <div id="keyWrap" class="keywrap">
-        <label for="key">Access Key</label>
-        <input id="key" name="key" placeholder="Enter access key" />
-      </div>
-
       <button id="submit">Get Pair Code</button>
     </form>
 
@@ -42,20 +37,17 @@
 const form = document.getElementById('pairForm');
 const result = document.getElementById('result');
 const codeBox = document.getElementById('codeBox');
-const keyWrap = document.getElementById('keyWrap');
-const pairKey = ""; // if server requires key, user must fill
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const num = document.getElementById('number').value.trim();
-  const key = document.getElementById('key').value.trim();
   codeBox.textContent = 'Requesting...';
   result.hidden = false;
   try {
     const res = await fetch('/api/pair', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: num, key })
+      body: JSON.stringify({ number: num })
     });
     const data = await res.json();
     if (res.ok) {
@@ -75,7 +67,6 @@ document.getElementById('done').addEventListener('click', () => {
   result.hidden = true;
   codeBox.textContent = '—';
   document.getElementById('number').value = '';
-  document.getElementById('key').value = '';
 });
 </script>
 </body>
