@@ -1,0 +1,21 @@
+{
+  "name": "pair-site-ui",
+  "version": "1.0.0",
+  "description": "WhatsApp Pair Code Generator with UI for Baileys (no MongoDB)",
+  "main": "pair.js",
+  "scripts": {
+    "start": "node pair.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.9",
+    "express": "^4.19.2",
+    "fs-extra": "^11.2.0",
+    "axios": "^1.7.2",
+    "pino": "^9.3.0",
+    "moment-timezone": "^0.5.45",
+    "body-parser": "^1.20.2"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
