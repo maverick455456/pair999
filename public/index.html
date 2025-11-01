@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Money Heist MD — Pair Code Generator</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <main class="card">
+    <header>
+      <img src="https://raw.githubusercontent.com/monetheistmd/WEB_DATABASE/main/Media/Image/OwnerMenu.jpg" alt="logo" class="logo"/>
+      <h1>Money Heist MD</h1>
+      <p class="subtitle">Secure Pair Code Generator for WhatsApp</p>
+    </header>
+
+    <form id="pairForm" class="form">
+      <label for="number">Phone number (with country code, no +)</label>
+      <input id="number" name="number" placeholder="94771234567" required />
+
+      <div id="keyWrap" class="keywrap">
+        <label for="key">Access Key</label>
+        <input id="key" name="key" placeholder="Enter access key" />
+      </div>
+
+      <button id="submit">Get Pair Code</button>
+    </form>
+
+    <section id="result" class="result" hidden>
+      <h2>Pair Code</h2>
+      <div id="codeBox" class="code">—</div>
+      <p id="instructions">Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.</p>
+      <button id="done">Done</button>
+    </section>
+
+    <footer>
+      <p>Keep the pairing page open until pairing completes. <strong>Do not share</strong> your credentials.</p>
+    </footer>
+  </main>
+
+<script>
+const form = document.getElementById('pairForm');
+const result = document.getElementById('result');
+const codeBox = document.getElementById('codeBox');
+const keyWrap = document.getElementById('keyWrap');
+const pairKey = ""; // if server requires key, user must fill
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const num = document.getElementById('number').value.trim();
+  const key = document.getElementById('key').value.trim();
+  codeBox.textContent = 'Requesting...';
+  result.hidden = false;
+  try {
+    const res = await fetch('/api/pair', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ number: num, key })
+    });
+    const data = await res.json();
+    if (res.ok) {
+      codeBox.textContent = data.code || 'No code';
+      document.getElementById('instructions').textContent = data.msg || 'Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.';
+    } else {
+      codeBox.textContent = 'Error';
+      document.getElementById('instructions').textContent = data.error || 'Failed to get code';
+    }
+  } catch (err) {
+    codeBox.textContent = 'Network Error';
+    document.getElementById('instructions').textContent = err.message || String(err);
+  }
+});
+
+document.getElementById('done').addEventListener('click', () => {
+  result.hidden = true;
+  codeBox.textContent = '—';
+  document.getElementById('number').value = '';
+  document.getElementById('key').value = '';
+});
+</script>
+</body>
+</html>

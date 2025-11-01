@@ -1,0 +1,15 @@
+:root{--bg:#0f1724;--card:#0b1220;--accent:#e11d48;--muted:#94a3b8;--glass:rgba(255,255,255,0.03)}
+*{box-sizing:border-box}body{font-family:Inter,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;color:#e6eef8;background:linear-gradient(180deg,#071124 0%,#061026 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:520px;background:var(--card);padding:26px;border-radius:12px;box-shadow:0 8px 30px rgba(2,6,23,0.6);border:1px solid rgba(255,255,255,0.03)}
+.logo{width:64px;height:64px;border-radius:8px;display:block;margin:0 auto 10px}
+h1{text-align:center;margin:0;font-size:22px}
+.subtitle{text-align:center;color:var(--muted);margin:6px 0 18px;font-size:13px}
+.form{display:flex;flex-direction:column;gap:12px}
+label{font-size:13px;color:var(--muted)}
+input{padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.04);background:rgba(255,255,255,0.02);color:inherit;font-size:15px}
+button{padding:12px;border-radius:10px;border:0;background:linear-gradient(90deg,#ff007a,#ff8a00);color:white;font-weight:600;cursor:pointer}
+.result{margin-top:16px;text-align:center}
+.code{font-size:30px;padding:18px;background:var(--glass);border-radius:10px;margin:12px 0}
+footer{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
+.keywrap{display:block}
+@media (max-width:480px){.card{padding:18px}}
