@@ -13,3 +13,4 @@ button{padding:12px;border-radius:10px;border:0;background:linear-gradient(90deg
 footer{margin-top:14px;text-align:center;color:var(--muted);font-size:13px}
 .keywrap{display:block}
 @media (max-width:480px){.card{padding:18px}}
+ 
