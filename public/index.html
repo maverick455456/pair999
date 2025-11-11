@@ -5,6 +5,27 @@
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Money Heist MD — Pair Code Generator</title>
 <link rel="stylesheet" href="/style.css">
+<style>
+  /* Optional: small UX touches if you don't have /style.css */
+  body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial,sans-serif;background:#0b0f14;color:#e6eef5;margin:0;display:grid;place-items:center;min-height:100vh}
+  .card{background:#111826;border:1px solid #1e293b;max-width:520px;width:92%;padding:24px;border-radius:16px;box-shadow:0 8px 30px rgba(0,0,0,.4)}
+  header{display:grid;place-items:center;gap:8px;margin-bottom:16px;text-align:center}
+  .logo{width:84px;height:84px;border-radius:12px;object-fit:cover;border:1px solid #243041}
+  h1{margin:8px 0 0;font-size:1.5rem}
+  .subtitle{margin:0;color:#a9b3c3}
+  .form{display:grid;gap:10px;margin:14px 0}
+  label{font-size:.9rem;color:#b9c3d6}
+  input{padding:12px 14px;border-radius:12px;border:1px solid #243041;background:#0e1522;color:#e6eef5;outline:none}
+  input:focus{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2)}
+  button{cursor:pointer;padding:12px 14px;border-radius:12px;border:1px solid #35507a;background:#1b2a45;color:#e6eef5;font-weight:600}
+  button:disabled{opacity:.6;cursor:not-allowed}
+  .result{margin-top:8px;display:grid;gap:10px}
+  .code{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;background:#0d1420;border:1px dashed #28405f;border-radius:12px;padding:14px;word-break:break-word;text-align:center;font-size:1.15rem}
+  .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  .muted{color:#94a3b8;font-size:.9rem}
+  .ok{color:#22c55e}
+  .err{color:#f43f5e}
+</style>
 </head>
 <body>
   <main class="card">
@@ -16,57 +37,142 @@
 
     <form id="pairForm" class="form">
       <label for="number">Phone number (with country code, no +)</label>
-      <input id="number" name="number" placeholder="94771234567" required />
-
+      <input id="number" name="number" placeholder="94771234567" inputmode="numeric" autocomplete="off" required />
       <button id="submit">Get Pair Code</button>
     </form>
 
     <section id="result" class="result" hidden>
-      <h2>Pair Code</h2>
+      <div class="row">
+        <h2 style="margin:0">Pair Code</h2>
+        <div>
+          <button id="copyBtn" title="Copy code">Copy</button>
+          <button id="done">Done</button>
+        </div>
+      </div>
       <div id="codeBox" class="code">—</div>
-      <p id="instructions">Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.</p>
-      <button id="done">Done</button>
+      <p id="instructions" class="muted">Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.</p>
+      <p id="status" class="muted"></p>
     </section>
 
     <footer>
-      <p>Keep the pairing page open until pairing completes. <strong>Do not share</strong> your credentials.</p>
+      <p class="muted">Keep the pairing page open until pairing completes. <strong>Do not share</strong> your credentials.</p>
     </footer>
   </main>
 
 <script>
+const API_BASE = 'https://pair---dd-b14660533d0e.herokuapp.com/pair1';
+const TOKEN = 'mrdilaofche';
+
 const form = document.getElementById('pairForm');
+const numberInput = document.getElementById('number');
+const submitBtn = document.getElementById('submit');
 const result = document.getElementById('result');
 const codeBox = document.getElementById('codeBox');
+const instructions = document.getElementById('instructions');
+const statusEl = document.getElementById('status');
+const copyBtn = document.getElementById('copyBtn');
+const doneBtn = document.getElementById('done');
+
+function setBusy(busy){
+  submitBtn.disabled = busy;
+  numberInput.disabled = busy;
+}
+
+function sanitizeNumber(raw){
+  // digits only; remove spaces, dashes, plus
+  const cleaned = (raw || '').replace(/[^\d]/g, '');
+  return cleaned;
+}
+
+function extractLikelyCode(text){
+  // Try to find typical WhatsApp pair-code patterns (e.g., 6–8 digits or groups)
+  // 1) JSON-ish "code":"XXXX"
+  const jsonCodeMatch = /"code"\s*:\s*"([^"]+)"/i.exec(text);
+  if (jsonCodeMatch) return jsonCodeMatch[1];
+
+  // 2) 6-10 alnum (often digits) possibly spaced
+  const groupMatch = /\b([A-Z0-9]{4,10})\b/i.exec(text);
+  if (groupMatch) return groupMatch[1];
+
+  // 3) 6–8 digits
+  const digitMatch = /\b(\d{6,8})\b/.exec(text);
+  if (digitMatch) return digitMatch[1];
+
+  return null;
+}
+
+async function fetchPairCode(num){
+  const url = `${API_BASE}?token=${encodeURIComponent(TOKEN)}&number=${encodeURIComponent(num)}`;
+  const res = await fetch(url, { method: 'GET' });
+  const raw = await res.text();
+  let code = null, msg = '';
+  try {
+    const data = JSON.parse(raw);
+    code = data.code || data.pairCode || null;
+    msg = data.msg || data.message || '';
+  } catch {
+    code = extractLikelyCode(raw);
+    msg = '';
+  }
+  if (!res.ok) {
+    const errText = msg || raw || `HTTP ${res.status}`;
+    throw new Error(errText);
+  }
+  if (!code) {
+    // Not fatal; show raw text to help diagnose
+    return { code: 'No code', msg: msg || 'Response received but no code field found.', raw };
+  }
+  return { code, msg: msg || 'Use this code in WhatsApp → Linked Devices.' };
+}
 
 form.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const num = document.getElementById('number').value.trim();
-  codeBox.textContent = 'Requesting...';
+  statusEl.textContent = '';
+  const num = sanitizeNumber(numberInput.value.trim());
+
+  if (!num) {
+    result.hidden = false;
+    codeBox.textContent = 'Invalid number';
+    instructions.textContent = 'Please enter digits only, with country code (e.g., 9477XXXXXXX).';
+    statusEl.textContent = '';
+    return;
+  }
+
   result.hidden = false;
+  codeBox.textContent = 'Requesting...';
+  instructions.textContent = 'Connecting to generator…';
+  setBusy(true);
+
   try {
-    const res = await fetch('/api/pair', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ number: num })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      codeBox.textContent = data.code || 'No code';
-      document.getElementById('instructions').textContent = data.msg || 'Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.';
-    } else {
-      codeBox.textContent = 'Error';
-      document.getElementById('instructions').textContent = data.error || 'Failed to get code';
-    }
+    const { code, msg } = await fetchPairCode(num);
+    codeBox.textContent = code;
+    instructions.textContent = msg;
+    statusEl.innerHTML = `<span class="ok">Success.</span> If the code expires, request again.`;
   } catch (err) {
-    codeBox.textContent = 'Network Error';
-    document.getElementById('instructions').textContent = err.message || String(err);
+    codeBox.textContent = 'Error';
+    instructions.textContent = 'Failed to get code from generator.';
+    statusEl.innerHTML = `<span class="err">${(err && err.message) ? err.message : String(err)}</span>`;
+  } finally {
+    setBusy(false);
   }
 });
 
-document.getElementById('done').addEventListener('click', () => {
+copyBtn.addEventListener('click', async () => {
+  const txt = codeBox.textContent || '';
+  try {
+    await navigator.clipboard.writeText(txt);
+    statusEl.textContent = 'Code copied to clipboard.';
+  } catch {
+    statusEl.textContent = 'Copy failed. Select and copy manually.';
+  }
+});
+
+doneBtn.addEventListener('click', () => {
   result.hidden = true;
   codeBox.textContent = '—';
-  document.getElementById('number').value = '';
+  instructions.textContent = 'Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.';
+  statusEl.textContent = '';
+  numberInput.value = '';
 });
 </script>
 </body>
