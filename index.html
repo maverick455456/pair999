@@ -1,113 +1,181 @@
 <!doctype html>
-<html lang="en">
+<html lang="si">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>Money Heist MD — Pair Code</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Safe Request Simulator — Single real request + simulated bulk</title>
 <style>
-  body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#0b0f14;color:#e6eef5;min-height:100dvh;display:grid;place-items:center;margin:0}
-  .card{background:#111826;border:1px solid #1f2937;max-width:520px;width:92%;padding:22px;border-radius:16px}
-  .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
-  label{color:#b7c1d3;font-size:.95rem}
-  input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a3a54;background:#0e1522;color:#e6eef5}
-  input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2)}
-  button{cursor:pointer;padding:12px 14px;border-radius:12px;border:1px solid #35507a;background:#1b2a45;color:#e6eef5;font-weight:600}
-  .code{font:600 1.15rem ui-monospace, Menlo, Consolas, monospace;background:#0c1420;border:1px dashed #2b405e;border-radius:12px;padding:14px;text-align:center;word-break:break-word}
-  .muted{color:#9fb0c6;font-size:.9rem}
-  .ok{color:#22c55e}.err{color:#f43f5e}
+  body{font-family:system-ui,Segoe UI,Roboto,Arial;background:#071029;color:#e6f3f7;margin:0;display:grid;place-items:center;min-height:100vh}
+  .card{width:96%;max-width:820px;background:#07141e;padding:20px;border-radius:12px;border:1px solid rgba(255,255,255,.03);box-shadow:0 8px 30px rgba(0,0,0,.6)}
+  h1{margin:0 0 6px;font-size:1.3rem}
+  p.sub{margin:0;color:#9fb0c6;font-size:.92rem}
+  form{margin-top:14px;display:grid;gap:10px}
+  label{color:#9fb0c6;font-size:.9rem}
+  input, select {padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.03);background:#071720;color:#e6f3f7}
+  .row{display:flex;gap:8px;align-items:center}
+  button{padding:10px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.04);background:#0b2a3a;color:#9ff0d4;cursor:pointer;font-weight:700}
+  button.ghost{background:transparent;color:#9fb0c6;border:1px dashed rgba(255,255,255,.03)}
+  .panel{margin-top:12px;padding:12px;border-radius:10px;background:#02121a;border:1px dashed rgba(255,255,255,.02)}
+  .status{font-family:ui-monospace,Menlo,monospace;padding:12px;border-radius:8px;background:#001217;border:1px solid rgba(255,255,255,.02);text-align:center}
+  .progress{height:10px;background:rgba(255,255,255,.03);border-radius:8px;overflow:hidden;margin-top:8px}
+  .bar{height:100%;width:0%;background:linear-gradient(90deg,#19d3a3,#0ff3c3);transition:width .15s linear}
+  .muted{color:#7f98ab;font-size:.9rem;margin-top:8px}
+  .danger{color:#ff8080;font-weight:700}
+  .ok{color:#8ef0b8;font-weight:700}
+  footer{margin-top:10px;color:#7f98ab;font-size:.85rem}
 </style>
 </head>
 <body>
-  <main class="card">
-    <h1 style="margin:.25rem 0 0">Money Heist MD</h1>
-    <p class="muted" style="margin:.25rem 0 1rem">Secure Pair Code Generator for WhatsApp</p>
+  <div class="card">
+    <h1>Safe Request Simulator</h1>
+    <p class="sub">Send <strong>only one</strong> real request (to your own/allowed endpoint) and simulate the rest visually. <span class="danger">Do not</span> use to target others.</p>
 
-    <form id="pairForm" class="form">
-      <label for="number">Phone number (with country code, no +)</label>
-      <input id="number" placeholder="94771234567" inputmode="numeric" autocomplete="off" required />
-      <div class="row" style="margin-top:10px">
-        <button id="submit">Get Pair Code</button>
-        <button id="clear" type="button">Clear</button>
+    <form id="mainForm" onsubmit="return false;">
+      <label>Target number (digits only)</label>
+      <input id="number" placeholder="9477xxxxxxxx" inputmode="numeric" />
+
+      <div class="row">
+        <div style="flex:1">
+          <label>Requests to simulate</label>
+          <input id="count" type="number" min="1" max="1000000" value="1000" />
+        </div>
+        <div style="width:220px">
+          <label>Delay between simulated requests (ms)</label>
+          <input id="delay" type="number" min="0" max="10000" value="10" />
+        </div>
+      </div>
+
+      <div class="row">
+        <div style="flex:1">
+          <label>Real request endpoint (your own / proxy)</label>
+          <input id="endpoint" placeholder="https://your-domain.example/api/pair" />
+          <div class="muted">Only one real POST will be sent to this URL when you click <strong>Send Single Request</strong>.</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-left:8px">
+          <button id="sendOne">Send Single Request</button>
+          <button id="simulate" class="ghost" type="button">Simulate All (no network)</button>
+        </div>
       </div>
     </form>
 
-    <section id="result" hidden style="margin-top:14px;display:grid;gap:10px">
-      <div class="row">
-        <h2 style="margin:0">Pair Code</h2>
+    <div class="panel">
+      <div style="display:flex;justify-content:space-between;align-items:center">
         <div>
-          <button id="copyBtn" type="button" title="Copy">Copy</button>
+          <div class="muted">Target</div>
+          <div id="targetView" class="status">—</div>
+        </div>
+        <div style="text-align:right">
+          <div class="muted">Requests processed</div>
+          <div id="countView" class="status">0</div>
         </div>
       </div>
-      <div id="codeBox" class="code">—</div>
-      <p id="instructions" class="muted">Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.</p>
-      <p id="status" class="muted"></p>
-    </section>
 
-    <p class="muted" style="margin-top:8px">Don’t share your code. Keep this page open until pairing completes.</p>
-  </main>
+      <div class="progress" aria-hidden="true">
+        <div id="bar" class="bar"></div>
+      </div>
+
+      <div id="log" class="muted" style="margin-top:10px;max-height:140px;overflow:auto;background:rgba(255,255,255,0.01);padding:8px;border-radius:6px"></div>
+      <div id="resultMsg" style="margin-top:10px"></div>
+    </div>
+
+    <footer>NOTE: Real request = 1 (to endpoint above). Rest of the requests are simulated locally for demo/visual purposes.</footer>
+  </div>
 
 <script>
-const API_BASE = 'https://pair---dd-b14660533d0e.herokuapp.com/pair1';
-const TOKEN    = 'mrdilaofche';
+/*
+  SAFE BEHAVIOR:
+  - Only a single real POST request is sent when clicking "Send Single Request".
+  - "Simulate All" will perform no network requests; it only animates the counter/progress.
+  - You must set `endpoint` to your OWN server or proxy that you have permission to use.
+*/
 
-const $ = sel => document.querySelector(sel);
-const form = $('#pairForm'), result = $('#result');
-const codeBox = $('#codeBox'), statusEl = $('#status'), instructions = $('#instructions');
-const numberInput = $('#number'), submitBtn = $('#submit'), copyBtn = $('#copyBtn');
-const clearBtn = $('#clear');
+const numberInput = document.getElementById('number');
+const countInput = document.getElementById('count');
+const delayInput = document.getElementById('delay');
+const endpointInput = document.getElementById('endpoint');
+const sendOneBtn = document.getElementById('sendOne');
+const simulateBtn = document.getElementById('simulate');
 
-function sanitizeNumber(v){ return (v||'').replace(/[^\d]/g,''); }
+const targetView = document.getElementById('targetView');
+const countView = document.getElementById('countView');
+const bar = document.getElementById('bar');
+const log = document.getElementById('log');
+const resultMsg = document.getElementById('resultMsg');
 
-function extractLikelyCode(text){
-  const j = /"code"\s*:\s*"([^"]+)"/i.exec(text); if (j) return j[1];
-  const d = /\b(\d{6,8})\b/.exec(text);        if (d) return d[1];
-  const g = /\b([A-Z0-9]{4,10})\b/i.exec(text); if (g) return g[1];
-  return null;
+function sanitize(v){ return (v||'').replace(/[^\d]/g,''); }
+function appendLog(msg, cls){ const el = document.createElement('div'); el.textContent = `${new Date().toLocaleTimeString()} — ${msg}`; if(cls) el.className = cls; log.prepend(el); if(log.children.length>200) log.removeChild(log.lastChild); }
+
+function updateUI(target, processed, total){
+  targetView.textContent = target || '—';
+  countView.textContent = processed.toLocaleString();
+  const pct = total > 0 ? Math.min(100, (processed/total)*100) : 0;
+  bar.style.width = pct + '%';
 }
 
-async function fetchPairCode(num){
-  const url = `${API_BASE}?token=${encodeURIComponent(TOKEN)}&number=${encodeURIComponent(num)}`;
-  const res = await fetch(url, { method: 'GET' });
-  const raw = await res.text();
-  let code=null, msg='';
-  try { const data = JSON.parse(raw); code = data.code || data.pairCode || null; msg = data.msg || data.message || ''; }
-  catch { code = extractLikelyCode(raw); }
-  if (!res.ok) throw new Error(msg || raw || `HTTP ${res.status}`);
-  return { code: code || 'No code', msg: msg || 'Use this in WhatsApp → Linked Devices.' };
-}
+// Send exactly one real POST request to the endpoint (if provided).
+sendOneBtn.addEventListener('click', async () => {
+  resultMsg.textContent = ''; appendLog('Send Single Request clicked');
+  const num = sanitize(numberInput.value.trim());
+  const endpoint = endpointInput.value.trim();
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const num = sanitizeNumber(numberInput.value.trim());
-  result.hidden = false;
-  if (!num){ codeBox.textContent='Invalid number'; instructions.textContent='Enter digits only (e.g., 9477XXXXXXX).'; statusEl.textContent=''; return; }
+  if (!num) { alert('Enter a phone number (digits)'); return; }
+  if (!endpoint) { alert('Enter your endpoint URL (must be your own/proxy)'); return; }
 
-  submitBtn.disabled = true; numberInput.disabled = true;
-  codeBox.textContent = 'Requesting…';
-  instructions.textContent = 'Connecting to generator…';
-  statusEl.textContent = '';
+  updateUI(num, 0, Number(countInput.value) || 1);
+  appendLog(`Sending 1 real POST to ${endpoint} (number=${num}) — ensure this is your own/proxy endpoint.`, 'info');
 
-  try{
-    const { code, msg } = await fetchPairCode(num);
-    codeBox.textContent = code;
-    instructions.textContent = msg;
-    statusEl.innerHTML = '<span class="ok">Success.</span> If the code expires, request again.';
-  }catch(err){
-    codeBox.textContent = 'Error';
-    instructions.textContent = 'Failed to get code.';
-    statusEl.innerHTML = `<span class="err">${err?.message || String(err)}</span>`;
-  }finally{
-    submitBtn.disabled = false; numberInput.disabled = false;
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // We send only minimal payload. Adjust per your server's contract.
+      body: JSON.stringify({ number: num })
+    });
+    const text = await res.text();
+    appendLog(`Response: HTTP ${res.status} — ${text.substring(0,200)}`);
+    resultMsg.innerHTML = `<div class="ok">Real request completed — HTTP ${res.status}. See logs.</div>`;
+  } catch (err) {
+    appendLog(`Network error: ${err.message}`, 'err');
+    resultMsg.innerHTML = `<div class="danger">Real request failed: ${err.message}</div>`;
   }
 });
 
-copyBtn.addEventListener('click', async () => {
-  try{ await navigator.clipboard.writeText(codeBox.textContent || ''); statusEl.textContent='Code copied to clipboard.'; }
-  catch{ statusEl.textContent='Copy failed. Select and copy manually.'; }
-});
+// Simulate processing N requests locally (no network calls)
+simulateBtn.addEventListener('click', () => {
+  resultMsg.textContent = ''; log.textContent = '';
+  const num = sanitize(numberInput.value.trim());
+  const total = Math.max(1, Math.min(1000000, Number(countInput.value) || 1000));
+  const delay = Math.max(0, Math.min(60000, Number(delayInput.value) || 10));
+  if (!num) { alert('Enter a phone number (digits)'); return; }
 
-clearBtn.addEventListener('click', () => {
-  form.reset(); result.hidden = true; codeBox.textContent='—'; instructions.textContent='Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.'; statusEl.textContent='';
+  appendLog(`Simulation started for ${total} requests to ${num}`, 'info');
+  updateUI(num, 0, total);
+
+  let processed = 0;
+  let running = true;
+
+  // We throttle animation frames to avoid blocking UI for very large counts.
+  function stepBatch() {
+    if (!running) return;
+    // process a small batch per tick to keep UI responsive
+    const batchSize = Math.max(1, Math.floor(100 / Math.max(1, delay))); // heuristics
+    const end = Math.min(total, processed + batchSize);
+    for (let i = processed + 1; i <= end; i++) {
+      processed = i;
+      if (i % Math.max(1, Math.floor(total/20)) === 0) {
+        appendLog(`Simulated request #${i}`);
+      }
+    }
+    updateUI(num, processed, total);
+
+    if (processed < total) {
+      setTimeout(stepBatch, delay);
+    } else {
+      appendLog('Simulation complete — demo only. No real requests were made.', 'ok');
+      resultMsg.innerHTML = `<div class="ok">Simulation finished: ${total.toLocaleString()} requests simulated.</div>`;
+    }
+  }
+  stepBatch();
 });
 </script>
 </body>
