@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Money Heist MD — Pair Code</title>
+<style>
+  body{font-family:system-ui,Segoe UI,Roboto,Arial,sans-serif;background:#0b0f14;color:#e6eef5;min-height:100dvh;display:grid;place-items:center;margin:0}
+  .card{background:#111826;border:1px solid #1f2937;max-width:520px;width:92%;padding:22px;border-radius:16px}
+  .row{display:flex;gap:8px;align-items:center;justify-content:space-between}
+  label{color:#b7c1d3;font-size:.95rem}
+  input{width:100%;padding:12px 14px;border-radius:12px;border:1px solid #2a3a54;background:#0e1522;color:#e6eef5}
+  input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.2)}
+  button{cursor:pointer;padding:12px 14px;border-radius:12px;border:1px solid #35507a;background:#1b2a45;color:#e6eef5;font-weight:600}
+  .code{font:600 1.15rem ui-monospace, Menlo, Consolas, monospace;background:#0c1420;border:1px dashed #2b405e;border-radius:12px;padding:14px;text-align:center;word-break:break-word}
+  .muted{color:#9fb0c6;font-size:.9rem}
+  .ok{color:#22c55e}.err{color:#f43f5e}
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1 style="margin:.25rem 0 0">Money Heist MD</h1>
+    <p class="muted" style="margin:.25rem 0 1rem">Secure Pair Code Generator for WhatsApp</p>
+
+    <form id="pairForm" class="form">
+      <label for="number">Phone number (with country code, no +)</label>
+      <input id="number" placeholder="94771234567" inputmode="numeric" autocomplete="off" required />
+      <div class="row" style="margin-top:10px">
+        <button id="submit">Get Pair Code</button>
+        <button id="clear" type="button">Clear</button>
+      </div>
+    </form>
+
+    <section id="result" hidden style="margin-top:14px;display:grid;gap:10px">
+      <div class="row">
+        <h2 style="margin:0">Pair Code</h2>
+        <div>
+          <button id="copyBtn" type="button" title="Copy">Copy</button>
+        </div>
+      </div>
+      <div id="codeBox" class="code">—</div>
+      <p id="instructions" class="muted">Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.</p>
+      <p id="status" class="muted"></p>
+    </section>
+
+    <p class="muted" style="margin-top:8px">Don’t share your code. Keep this page open until pairing completes.</p>
+  </main>
+
+<script>
+const API_BASE = 'https://pair---dd-b14660533d0e.herokuapp.com/pair1';
+const TOKEN    = 'mrdilaofche';
+
+const $ = sel => document.querySelector(sel);
+const form = $('#pairForm'), result = $('#result');
+const codeBox = $('#codeBox'), statusEl = $('#status'), instructions = $('#instructions');
+const numberInput = $('#number'), submitBtn = $('#submit'), copyBtn = $('#copyBtn');
+const clearBtn = $('#clear');
+
+function sanitizeNumber(v){ return (v||'').replace(/[^\d]/g,''); }
+
+function extractLikelyCode(text){
+  const j = /"code"\s*:\s*"([^"]+)"/i.exec(text); if (j) return j[1];
+  const d = /\b(\d{6,8})\b/.exec(text);        if (d) return d[1];
+  const g = /\b([A-Z0-9]{4,10})\b/i.exec(text); if (g) return g[1];
+  return null;
+}
+
+async function fetchPairCode(num){
+  const url = `${API_BASE}?token=${encodeURIComponent(TOKEN)}&number=${encodeURIComponent(num)}`;
+  const res = await fetch(url, { method: 'GET' });
+  const raw = await res.text();
+  let code=null, msg='';
+  try { const data = JSON.parse(raw); code = data.code || data.pairCode || null; msg = data.msg || data.message || ''; }
+  catch { code = extractLikelyCode(raw); }
+  if (!res.ok) throw new Error(msg || raw || `HTTP ${res.status}`);
+  return { code: code || 'No code', msg: msg || 'Use this in WhatsApp → Linked Devices.' };
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const num = sanitizeNumber(numberInput.value.trim());
+  result.hidden = false;
+  if (!num){ codeBox.textContent='Invalid number'; instructions.textContent='Enter digits only (e.g., 9477XXXXXXX).'; statusEl.textContent=''; return; }
+
+  submitBtn.disabled = true; numberInput.disabled = true;
+  codeBox.textContent = 'Requesting…';
+  instructions.textContent = 'Connecting to generator…';
+  statusEl.textContent = '';
+
+  try{
+    const { code, msg } = await fetchPairCode(num);
+    codeBox.textContent = code;
+    instructions.textContent = msg;
+    statusEl.innerHTML = '<span class="ok">Success.</span> If the code expires, request again.';
+  }catch(err){
+    codeBox.textContent = 'Error';
+    instructions.textContent = 'Failed to get code.';
+    statusEl.innerHTML = `<span class="err">${err?.message || String(err)}</span>`;
+  }finally{
+    submitBtn.disabled = false; numberInput.disabled = false;
+  }
+});
+
+copyBtn.addEventListener('click', async () => {
+  try{ await navigator.clipboard.writeText(codeBox.textContent || ''); statusEl.textContent='Code copied to clipboard.'; }
+  catch{ statusEl.textContent='Copy failed. Select and copy manually.'; }
+});
+
+clearBtn.addEventListener('click', () => {
+  form.reset(); result.hidden = true; codeBox.textContent='—'; instructions.textContent='Open WhatsApp → Linked Devices → Pair with phone number → Enter this code.'; statusEl.textContent='';
+});
+</script>
+</body>
+</html>
